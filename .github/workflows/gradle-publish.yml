@@ -2,8 +2,10 @@ name: Build and Release Plugin
 
 on:
   push:
+    branches:
+      - 'main'   # Run on every push to main branch
     tags:
-      - 'v*'   # Auto-release on tags like v1.0, v1.2.3
+      - 'v*'   # Also run on version tags
   workflow_dispatch:  # Allows manual trigger via button
     inputs:
       release_tag:
@@ -66,10 +68,6 @@ jobs:
           cd BuildTools
           export MAVEN_OPTS="-Dhttps.protocols=TLSv1.2"
           java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21.8
-          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21.3
-          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21.1
-          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21
-          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.20.6
 
       - name: Build with Gradle
         run: ./gradlew build
