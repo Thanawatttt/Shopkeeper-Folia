@@ -3,7 +3,22 @@ name: Build and Release Plugin
 on:
   push:
     tags:
-      - 'v*'   # Trigger on tags like v1.0, v1.0.1, etc.
+      - 'v*'   # Auto-release on tags like v1.0, v1.2.3
+  workflow_dispatch:  # Allows manual trigger via button
+    inputs:
+      release_tag:
+        description: 'Tag name for release (e.g. v1.5.0)'
+        required: true
+        default: 'v1.0.0'
+      release_name:
+        description: 'Release name'
+        required: false
+        default: 'Auto Release'
+      prerelease:
+        description: 'Mark as pre-release?'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-and-release:
@@ -32,8 +47,25 @@ jobs:
         id: find_jar
         run: |
           JAR_FILE=$(ls build/libs/*.jar | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "❌ No JAR file found! Build may have failed."
+            exit 1
+          fi
           echo "JAR_FILE=$JAR_FILE" >> $GITHUB_OUTPUT
-          echo "BASE_NAME=$(basename $JAR_FILE)" >> $GITHUB_OUTPUT
+          echo "BASE_NAME=$(basename "$JAR_FILE")" >> $GITHUB_OUTPUT
+
+      - name: Determine Tag and Release Name
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+            echo "NAME=${{ github.event.inputs.release_name }}" >> $GITHUB_OUTPUT
+            echo "PRERELEASE=${{ github.event.inputs.prerelease }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${{ github.ref }}" >> $GITHUB_OUTPUT
+            echo "NAME=Release ${{ github.ref }}" >> $GITHUB_OUTPUT
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create Release
         id: create_release
@@ -41,10 +73,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ steps.vars.outputs.TAG }}
+          release_name: ${{ steps.vars.outputs.NAME }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.vars.outputs.PRERELEASE }}
 
       - name: Upload JAR to Release
         uses: actions/upload-release-asset@v1
