@@ -35,6 +35,11 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.5
+        with:
+          maven-version: '3.9.6'
+
       - name: Make Gradle Wrapper Executable
         run: chmod +x ./gradlew
 
@@ -43,15 +48,28 @@ jobs:
           mkdir -p BuildTools
           cd BuildTools
           wget https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar
+          # Create a local maven settings file to use HTTPS instead of HTTP
+          echo '<settings>
+            <mirrors>
+              <mirror>
+                <id>maven-default-http-blocker</id>
+                <mirrorOf>external:http:*</mirrorOf>
+                <name>Pseudo repository to mirror external repositories initially using HTTP.</name>
+                <url>https://maven.apache.org/repository</url>
+                <blocked>false</blocked>
+              </mirror>
+            </mirrors>
+          </settings>' > ~/.m2/settings.xml
 
       - name: Build CraftBukkit Dependencies
         run: |
           cd BuildTools
-          java -jar BuildTools.jar --rev 1.21.8
-          java -jar BuildTools.jar --rev 1.21.3
-          java -jar BuildTools.jar --rev 1.21.1
-          java -jar BuildTools.jar --rev 1.21
-          java -jar BuildTools.jar --rev 1.20.6
+          export MAVEN_OPTS="-Dhttps.protocols=TLSv1.2"
+          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21.8
+          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21.3
+          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21.1
+          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.21
+          java -Dhttps.protocols=TLSv1.2 -jar BuildTools.jar --remapped --compile craftbukkit --rev 1.20.6
 
       - name: Build with Gradle
         run: ./gradlew build
